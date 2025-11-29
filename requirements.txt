@@ -3,3 +3,5 @@ numpy
 scikit-learn
 nltk
 huggingface_hub
+flask
+flask-cors

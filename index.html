@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Recommender</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #8b5cf6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .search-container {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 3rem;
+            animation: fadeInUp 0.8s ease-out 0.2s backwards;
+            position: relative;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            border: 2px solid var(--card-bg);
+            background-color: var(--card-bg);
+            color: var(--text);
+            font-size: 1.1rem;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+            border-radius: 12px 12px 0 0;
+        }
+
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: var(--card-bg);
+            border: 2px solid var(--primary);
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .autocomplete-dropdown.show {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            color: var(--text);
+        }
+
+        .autocomplete-item:hover,
+        .autocomplete-item.active {
+            background-color: rgba(99, 102, 241, 0.2);
+        }
+
+        .autocomplete-item:last-child {
+            border-radius: 0 0 10px 10px;
+        }
+
+        button {
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            font-family: inherit;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -10px var(--primary);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #results-area {
+            width: 100%;
+            max-width: 1200px;
+            display: none;
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        .found-movie {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .found-movie h2 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .recommendations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .movie-card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid transparent;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .movie-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px -15px rgba(99, 102, 241, 0.4);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .movie-poster {
+            width: 100%;
+            aspect-ratio: 2/3;
+            object-fit: cover;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            display: block;
+        }
+
+        .movie-poster-placeholder {
+            width: 100%;
+            aspect-ratio: 2/3;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 3rem;
+        }
+
+        .movie-info {
+            padding: 1rem;
+        }
+
+        .movie-title {
+            font-size: 1rem;
+            font-weight: 600;
+            line-height: 1.4;
+            color: var(--text);
+        }
+
+        .error-message {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            padding: 1rem;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .loader {
+            display: none;
+            width: 48px;
+            height: 48px;
+            border: 5px solid #FFF;
+            border-bottom-color: var(--primary);
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes rotation {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Movie Recommender</h1>
+        <p class="subtitle">Discover your next favorite film with AI</p>
+    </header>
+
+    <div class="search-container">
+        <div class="input-wrapper">
+            <input type="text" id="movieInput" placeholder="Enter a movie you like (e.g., Inception)..."
+                autocomplete="off">
+            <div id="autocomplete" class="autocomplete-dropdown"></div>
+        </div>
+        <button onclick="getRecommendations()" id="searchBtn">Recommend</button>
+    </div>
+
+    <div id="loader" class="loader" style="display: none;"></div>
+    <div id="error-msg" class="error-message"></div>
+
+    <div id="results-area">
+        <div class="found-movie">
+            <h2>Found: <span id="found-title"></span></h2>
+            <p>Based on this movie, here are our top picks for you:</p>
+        </div>
+        <div class="recommendations-grid" id="rec-grid">
+            <!-- Cards will be injected here -->
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:5000';
+        let debounceTimer;
+        let currentFocus = -1;
+
+        const input = document.getElementById('movieInput');
+        const autocomplete = document.getElementById('autocomplete');
+
+        // Live search functionality
+        input.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            const query = this.value.trim();
+
+            if (query.length < 2) {
+                autocomplete.classList.remove('show');
+                return;
+            }
+
+            debounceTimer = setTimeout(() => {
+                fetchSuggestions(query);
+            }, 300);
+        });
+
+        // Keyboard navigation
+        input.addEventListener('keydown', function (e) {
+            const items = autocomplete.getElementsByClassName('autocomplete-item');
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                currentFocus++;
+                addActive(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                currentFocus--;
+                addActive(items);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (currentFocus > -1 && items[currentFocus]) {
+                    items[currentFocus].click();
+                } else {
+                    getRecommendations();
+                }
+            } else if (e.key === 'Escape') {
+                autocomplete.classList.remove('show');
+            }
+        });
+
+        function addActive(items) {
+            if (!items) return false;
+            removeActive(items);
+            if (currentFocus >= items.length) currentFocus = 0;
+            if (currentFocus < 0) currentFocus = items.length - 1;
+            items[currentFocus].classList.add('active');
+        }
+
+        function removeActive(items) {
+            for (let i = 0; i < items.length; i++) {
+                items[i].classList.remove('active');
+            }
+        }
+
+        async function fetchSuggestions(query) {
+            try {
+                const response = await fetch(`${API_URL}/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (data.suggestions && data.suggestions.length > 0) {
+                    showSuggestions(data.suggestions);
+                } else {
+                    autocomplete.classList.remove('show');
+                }
+            } catch (err) {
+                console.error('Search error:', err);
+            }
+        }
+
+        function showSuggestions(suggestions) {
+            autocomplete.innerHTML = '';
+            currentFocus = -1;
+
+            suggestions.forEach(title => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.textContent = title;
+                item.addEventListener('click', function () {
+                    input.value = title;
+                    autocomplete.classList.remove('show');
+                    getRecommendations();
+                });
+                autocomplete.appendChild(item);
+            });
+
+            autocomplete.classList.add('show');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function (e) {
+            if (e.target !== input) {
+                autocomplete.classList.remove('show');
+            }
+        });
+
+        async function getRecommendations() {
+            const query = input.value.trim();
+            const btn = document.getElementById('searchBtn');
+            const loader = document.getElementById('loader');
+            const resultsArea = document.getElementById('results-area');
+            const errorMsg = document.getElementById('error-msg');
+            const recGrid = document.getElementById('rec-grid');
+            const foundTitle = document.getElementById('found-title');
+
+            if (!query) return;
+
+            // Hide autocomplete
+            autocomplete.classList.remove('show');
+
+            // Reset UI
+            btn.disabled = true;
+            loader.style.display = 'block';
+            resultsArea.style.display = 'none';
+            errorMsg.style.display = 'none';
+            recGrid.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_URL}/recommend?title=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to fetch recommendations');
+                }
+
+                // Update UI with results
+                foundTitle.textContent = data.movie_title;
+
+                data.recommendations.forEach((rec, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'movie-card';
+                    card.style.animation = `fadeInUp 0.5s ease-out ${index * 0.1}s backwards`;
+
+                    // Check if poster_path exists
+                    const posterHTML = rec.poster_path
+                        ? `<img src="${rec.poster_path}" alt="${rec.title}" class="movie-poster" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                           <div class="movie-poster-placeholder" style="display: none;">🎬</div>`
+                        : `<div class="movie-poster-placeholder">🎬</div>`;
+
+                    card.innerHTML = `
+                        ${posterHTML}
+                        <div class="movie-info">
+                            <div class="movie-title">${rec.title}</div>
+                        </div>
+                    `;
+                    recGrid.appendChild(card);
+                });
+
+                resultsArea.style.display = 'block';
+
+            } catch (err) {
+                errorMsg.textContent = err.message;
+                errorMsg.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                loader.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -8,8 +8,7 @@ def get_recommendations(title_query):
         movies = pd.read_pickle('movies_df.pkl')
         feature_array = np.load('feature_array.npz')['arr_0']
     except FileNotFoundError:
-        print("Data files not found. Please run build_model.py first to generate .pkl and .npz files.")
-        return
+        return {"error": "Data files not found. Please run build_model.py first to generate .pkl and .npz files."}
 
     print(f"Data loaded. Movies shape: {movies.shape}, Features shape: {feature_array.shape}")
 
@@ -18,8 +17,7 @@ def get_recommendations(title_query):
     matches = movies[movies['title'].str.contains(title_query, case=False, na=False)]
     
     if matches.empty:
-        print(f"No movie found matching '{title_query}'")
-        return
+        return {"error": f"No movie found matching '{title_query}'"}
 
     # Use the first match
     movie_idx = matches.index[0]
@@ -33,11 +31,25 @@ def get_recommendations(title_query):
     # Get top 10 recommendations
     similar_indices = similarity_scores.argsort()[-11:-1][::-1]
     
-    print(f"\nRecommendations for '{movie_title}':")
+    recommendations = []
     for i, idx in enumerate(similar_indices):
         rec_title = movies.iloc[idx]['title']
+        poster_path = movies.iloc[idx]['poster_path']
         rec_score = similarity_scores[idx]
-        print(f"{i+1}. {rec_title} (Score: {rec_score:.4f})")
+        recommendations.append({
+            "title": rec_title,
+            "poster_path":"https://image.tmdb.org/t/p/w342/" + poster_path,
+            "score": float(rec_score)   
+        })
+    
+    return {
+        "movie_title": movie_title,
+        "recommendations": recommendations
+    }
 
 if __name__ == "__main__":
-    get_recommendations("Captain America")
+    result = get_recommendations("Captain America")
+    print(result)
+
+
+
