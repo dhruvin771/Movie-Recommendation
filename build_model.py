@@ -67,7 +67,7 @@ def build_model():
     print(f"After documentary filter: {movies.shape}")
     
     # Keep necessary columns
-    movies = movies[["id","title","overview","poster_path","backdrop_path","tagline","production_companies","genres","keywords"]]
+    movies = movies[["id","title","overview","poster_path","backdrop_path","release_date","tagline","production_companies","genres","keywords"]]
     
     # Drop rows with missing overview
     movies = movies[movies['overview'].notna()]
@@ -88,20 +88,40 @@ def build_model():
     movies.loc[:, 'keywords_tokens'] = movies['keywords'].apply(process_text)
     movies.loc[:, 'companies_tokens'] = movies['production_companies'].apply(process_text)
     
-    # Combine tokens
+    # --- IMPROVEMENT 3: Add franchise/series detection ---
+    # Extract base title (before colon) to help sequels be recommended together
+    def extract_franchise(title):
+        if not isinstance(title, str):
+            return []
+        # Get the part before the colon (e.g., "Avatar" from "Avatar: The Way of Water")
+        base_title = title.split(':')[0].strip()
+        # Also check for common sequel patterns
+        base_title = re.sub(r'\s+(Part|Chapter|Episode|Volume|Book)\s+\d+', '', base_title, flags=re.IGNORECASE)
+        base_title = re.sub(r'\s+\d+$', '', base_title)  # Remove trailing numbers like "Avatar 2"
+        
+        # CRITICAL FIX: Join with underscores to create a UNIQUE token
+        # This prevents "Iron Man" (Iron, Man) from matching "Iron Lady" (Iron, Lady)
+        # It will now be "franchise_Iron_Man" which only matches other "franchise_Iron_Man"
+        slug = "franchise_" + base_title.lower().replace(' ', '_')
+        return [slug]
+    
+    movies.loc[:, 'franchise_tokens'] = movies['title'].apply(extract_franchise)
+    
+    # Combine tokens - give extra weight to franchise and companies
     movies.loc[:, 'encode_list'] = (
         movies['overview_tokens'] + 
         movies['genres_tokens'] + 
-        movies['companies_tokens'] + 
-        movies['keywords_tokens']
+        movies['companies_tokens'] * 2 +  # Double weight for Studios (Marvel, etc.)
+        movies['keywords_tokens'] +
+        movies['franchise_tokens'] * 5  # High weight for exact franchise match
     ).apply(lambda tokens: ' '.join(tokens))
     
     print("Stemming...")
     # Stemming
     movies.loc[:, 'encode_list'] = movies['encode_list'].map(stem)
     
-    # Create final dataframe
-    new_movies = movies[['id', 'title', 'poster_path', 'encode_list']].copy()
+    # Create final dataframe - also save release_date for the frontend
+    new_movies = movies[['id', 'title', 'poster_path', 'release_date', 'encode_list']].copy()
     
     # --- IMPROVEMENT 2: Increase max_features ---
     print("Vectorizing with max_features=5000...")
