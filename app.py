@@ -31,8 +31,30 @@ def search():
     # Search for matching titles (case-insensitive)
     matches = df[df['title'].str.contains(query, case=False, na=False)]
     
-    # Return top 10 matches
-    suggestions = matches.head(10)['title'].tolist()
+    # Return top 10 matches with title, year, and poster
+    suggestions = []
+    for _, row in matches.head(10).iterrows():
+        title = row['title']
+        # Extract year from release_date if available
+        year = ''
+        if 'release_date' in row and pd.notna(row['release_date']):
+            try:
+                year = str(row['release_date'])[:4]  # Get first 4 characters (year)
+            except:
+                pass
+        
+        # Get poster path
+        poster_path = ''
+        if 'poster_path' in row and pd.notna(row['poster_path']):
+            poster_path = "https://image.tmdb.org/t/p/w92/" + row['poster_path']  # Small size for dropdown
+        
+        suggestions.append({
+            "title": title,
+            "year": year,
+            "poster_path": poster_path,
+            "display": f"{title} ({year})" if year else title
+        })
+    
     return jsonify({"suggestions": suggestions})
 
 @app.route('/recommend', methods=['GET'])

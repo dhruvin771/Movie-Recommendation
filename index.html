@@ -46,6 +46,7 @@
             font-size: 3rem;
             font-weight: 600;
             background: linear-gradient(135deg, var(--primary), var(--accent));
+            background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 0.5rem;
@@ -99,7 +100,7 @@
             border: 2px solid var(--primary);
             border-top: none;
             border-radius: 0 0 12px 12px;
-            max-height: 300px;
+            max-height: 400px;
             overflow-y: auto;
             z-index: 1000;
             display: none;
@@ -111,10 +112,13 @@
         }
 
         .autocomplete-item {
-            padding: 0.75rem 1.5rem;
+            padding: 0.5rem;
             cursor: pointer;
             transition: background-color 0.2s ease;
             color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
         }
 
         .autocomplete-item:hover,
@@ -124,6 +128,47 @@
 
         .autocomplete-item:last-child {
             border-radius: 0 0 10px 10px;
+        }
+
+        .autocomplete-poster {
+            width: 40px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 4px;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            flex-shrink: 0;
+        }
+
+        .autocomplete-poster-placeholder {
+            width: 40px;
+            height: 60px;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .autocomplete-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .autocomplete-title {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .autocomplete-year {
+            font-size: 0.85rem;
+            color: var(--text-muted);
         }
 
         button {
@@ -394,12 +439,31 @@
             autocomplete.innerHTML = '';
             currentFocus = -1;
 
-            suggestions.forEach(title => {
+            suggestions.forEach(suggestion => {
                 const item = document.createElement('div');
                 item.className = 'autocomplete-item';
-                item.textContent = title;
+
+                // Create poster element
+                let posterHTML = '';
+                if (suggestion.poster_path) {
+                    posterHTML = `<img src="${suggestion.poster_path}" class="autocomplete-poster" alt="${suggestion.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                  <div class="autocomplete-poster-placeholder" style="display: none;">🎬</div>`;
+                } else {
+                    posterHTML = `<div class="autocomplete-poster-placeholder">🎬</div>`;
+                }
+
+                // Build the item HTML
+                item.innerHTML = `
+                    ${posterHTML}
+                    <div class="autocomplete-info">
+                        <div class="autocomplete-title">${suggestion.title}</div>
+                        ${suggestion.year ? `<div class="autocomplete-year">${suggestion.year}</div>` : ''}
+                    </div>
+                `;
+
                 item.addEventListener('click', function () {
-                    input.value = title;
+                    // Use the actual title for the input
+                    input.value = suggestion.title;
                     autocomplete.classList.remove('show');
                     getRecommendations();
                 });
